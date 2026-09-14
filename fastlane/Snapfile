@@ -9,7 +9,8 @@ scheme("Hushaboom-iOS")
 testplan("Screenshots")
 
 output_directory("./fastlane/screenshots")
-clear_previous_screenshots(true)
+# The Makefile clears per-platform; clearing here would delete the macOS set.
+clear_previous_screenshots(false)
 
 # Freeze the status bar: 9:41, full bars, no carrier clutter.
 override_status_bar(true)

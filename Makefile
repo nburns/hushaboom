@@ -17,7 +17,7 @@ XCPROJ        := Hushaboom.xcodeproj
 ASC_KEY_PATH  ?= $(HOME)/.appstoreconnect/private_keys/AuthKey_$(ASC_KEY_ID).p8
 
 .PHONY: help setup install-key generate build build-ios test run run-simulator run-ios \
-        logs-ios archive-ios archive-mac beta beta-ios beta-mac screenshots screenshots-ios screenshots-mac icon clean
+        logs-ios archive-ios archive-mac beta beta-ios beta-mac screenshots screenshots-ios screenshots-mac create-app metadata icon clean
 
 help:
 	@echo "Targets:"
@@ -39,6 +39,8 @@ help:
 	@echo "  screenshots     Capture all App Store screenshots (iOS + macOS)"
 	@echo "  screenshots-ios Capture iPhone and iPad screenshots (fastlane snapshot)"
 	@echo "  screenshots-mac Capture macOS screenshots (XCUITest + result bundle)"
+	@echo "  create-app      Create the App Store Connect record (one time)"
+	@echo "  metadata        Upload metadata and screenshots (no binary)"
 	@echo "  icon            Regenerate Design/icon/ from Design/generate-icon.py"
 	@echo "  clean           Remove $(BUILD_DIR)"
 
@@ -121,18 +123,30 @@ beta-mac:
 screenshots: screenshots-ios screenshots-mac
 
 screenshots-ios:
+	rm -f -- fastlane/screenshots/en-US/iPhone*.png fastlane/screenshots/en-US/iPad*.png
 	fastlane ios screenshots
 
 # The macOS test runner is sandboxed, so the PNGs come out of the result
 # bundle rather than being written straight to disk.
 screenshots-mac:
-	rm -rf -- "$(BUILD_DIR)/mac-screenshots.xcresult" fastlane/screenshots/mac
+	rm -rf -- "$(BUILD_DIR)/mac-screenshots.xcresult" "$(BUILD_DIR)/mac-shots"
+	rm -f -- fastlane/screenshots/en-US/mac-*.png
 	xcodebuild test -scheme "$(MAC_SCHEME)" -testPlan Screenshots-macOS -destination 'platform=macOS' \
 		-derivedDataPath "$(BUILD_DIR)" -resultBundlePath "$(BUILD_DIR)/mac-screenshots.xcresult"
-	mkdir -p fastlane/screenshots/mac
+	mkdir -p "$(BUILD_DIR)/mac-shots" fastlane/screenshots/en-US
 	xcrun xcresulttool export attachments --path "$(BUILD_DIR)/mac-screenshots.xcresult" \
-		--output-path fastlane/screenshots/mac
-	python3 Scripts/rename-mac-screenshots.py fastlane/screenshots/mac
+		--output-path "$(BUILD_DIR)/mac-shots"
+	python3 Scripts/rename-mac-screenshots.py "$(BUILD_DIR)/mac-shots"
+	@for f in "$(BUILD_DIR)"/mac-shots/*.png; do \
+		cp -- "$$f" "fastlane/screenshots/en-US/mac-$$(basename "$$f")"; \
+	done
+	@echo "macOS screenshots copied into fastlane/screenshots/en-US/"
+
+create-app:
+	fastlane create_app
+
+metadata:
+	fastlane metadata
 
 icon:
 	python3 Design/generate-icon.py

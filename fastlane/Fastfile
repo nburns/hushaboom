@@ -27,6 +27,33 @@ def xcargs
   "CURRENT_PROJECT_VERSION=#{build_number} -allowProvisioningUpdates"
 end
 
+# Creates the App Store Connect record and registers the bundle ID. Both are
+# effectively permanent, so this is deliberately a separate lane.
+lane :create_app do
+  produce(
+    api_key: asc_key,
+    app_name: "Hushaboom",
+    app_identifier: "io.burns.hushaboom",
+    language: "English (U.S.)",
+    sku: "hushaboom",
+    platforms: ["ios", "osx"]
+  )
+end
+
+# Pushes metadata and screenshots only - never the binary, which the beta
+# lanes handle.
+lane :metadata do
+  upload_to_app_store(
+    api_key: asc_key,
+    skip_binary_upload: true,
+    skip_app_version_update: false,
+    overwrite_screenshots: true,
+    submit_for_review: false,
+    precheck_include_in_app_purchases: false,
+    force: true
+  )
+end
+
 platform :ios do
   # Screenshots run from their own test plan, so `xcodebuild test` on the app
   # scheme stays simulator-free.
