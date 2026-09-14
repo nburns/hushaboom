@@ -22,7 +22,8 @@ Package.resolved
 *.p12
 *.p8
 
-# Middleman (website/); the built site in docs/ IS committed, for GitHub Pages
+# Middleman (website/); the site is built and deployed by GitHub Actions
+website/build
 website/.bundle
 website/.cache
 website/.sass-cache

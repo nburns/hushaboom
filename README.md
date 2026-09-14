@@ -25,8 +25,7 @@ through `NoisePlayer`.
   name. Regenerate its source layers with `Design/generate-icon.py`.
 - `website/` - [Middleman](https://middlemanapp.com) site for
   hushaboom.burns.io (the App Store support and privacy-policy URLs).
-  It builds to `docs/` at the repo root, which is what GitHub Pages
-  serves, so the built output is committed.
+  GitHub Actions builds and deploys it; the build output is not committed.
 - `project.yml` - [XcodeGen](https://github.com/yonaskolb/XcodeGen) spec that
   produces `Hushaboom.xcodeproj` (the project file is generated, don't edit it
   by hand).
@@ -67,18 +66,24 @@ every app on the team, so it lives at
 
 ## Website
 
-`website/` is a Middleman app that produces hushaboom.burns.io. GitHub Pages
-serves from `docs/` at the repository root, so that is the build directory and
-its output is committed rather than ignored.
+`website/` is a Middleman app that produces hushaboom.burns.io.
 
 ```sh
 cd website && bundle install   # one time
 make watch                     # dev server on :4567
-make build                     # writes ../docs
+make build                     # writes website/build
 ```
 
-The domain comes from `website/source/CNAME`; `.nojekyll` at the repo root
-stops Pages from running the output through Jekyll.
+`.github/workflows/pages.yml` builds and deploys it to GitHub Pages on any
+push to `main` that touches `website/`, so the build output is not committed.
+The domain comes from `website/source/CNAME`.
+
+`Gemfile.lock` must list `x86_64-linux` alongside the local platform or the
+CI build fails to resolve; after changing gems run:
+
+```sh
+cd website && bundle lock --add-platform x86_64-linux
+```
 
 ## Installing on a device
 
