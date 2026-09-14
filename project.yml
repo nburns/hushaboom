@@ -48,6 +48,39 @@ targets:
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
         ITSAppUsesNonExemptEncryption: false
+    scheme:
+      testPlans:
+        - path: TestPlans/Hushaboom.xctestplan
+          defaultPlan: true
+        - path: TestPlans/Screenshots.xctestplan
+
+  Hushaboom-iOSUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - UITests
+    dependencies:
+      - target: Hushaboom-iOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.burns.hushaboom.uitests
+        TEST_TARGET_NAME: Hushaboom-iOS
+        GENERATE_INFOPLIST_FILE: YES
+
+  Hushaboom-macOSUITests:
+    type: bundle.ui-testing
+    platform: macOS
+    sources:
+      - UITests-macOS
+      - path: UITests/ScreenshotFixtures.swift
+        type: file
+    dependencies:
+      - target: Hushaboom-macOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.burns.hushaboom.macuitests
+        TEST_TARGET_NAME: Hushaboom-macOS
+        GENERATE_INFOPLIST_FILE: YES
 
   Hushaboom-macOS:
     type: application
@@ -80,3 +113,8 @@ targets:
         ITSAppUsesNonExemptEncryption: false
         LSApplicationCategoryType: public.app-category.healthcare-fitness
         NSHumanReadableCopyright: Copyright © 2026 Burns Software LLC. All rights reserved.
+    scheme:
+      testPlans:
+        - path: TestPlans/Hushaboom-macOS.xctestplan
+          defaultPlan: true
+        - path: TestPlans/Screenshots-macOS.xctestplan

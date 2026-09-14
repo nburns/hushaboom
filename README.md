@@ -46,6 +46,29 @@ make test          # NoiseKit suite (~5 min; the spectral tests are slow)
 `Hushaboom.xcodeproj` is generated from `project.yml` and is not checked in;
 `make generate` (or any build target) recreates it.
 
+## Screenshots
+
+```sh
+make screenshots        # iPhone, iPad, and macOS
+make screenshots-ios    # fastlane snapshot
+make screenshots-mac    # XCUITest, exported from the result bundle
+```
+
+Output lands in `fastlane/screenshots/` (gitignored). Both platforms share
+`UITests/ScreenshotFixtures.swift`, which injects a fixed mix through the
+UserDefaults argument domain so the captures are identical run to run.
+
+Two things to know before editing them:
+
+- Fixture values must be plist fragments (`<real>0.65</real>`). The argument
+  domain treats a bare `0.65` as a string, `as? Double` returns nil, and every
+  slider silently falls back to its default.
+- Never start the sleep timer in a screenshot. Its label is a live
+  `Text(_, style: .timer)` counter, so the image would differ every run.
+
+The screenshot tests live in their own test plans, so `xcodebuild test` on
+either app scheme runs zero tests rather than booting simulators.
+
 ## Releasing
 
 `CFBundleShortVersionString` comes from `MARKETING_VERSION` in `project.yml`.

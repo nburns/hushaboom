@@ -28,6 +28,12 @@ def xcargs
 end
 
 platform :ios do
+  # Screenshots run from their own test plan, so `xcodebuild test` on the app
+  # scheme stays simulator-free.
+  lane :screenshots do
+    snapshot
+  end
+
   lane :beta do
     api_key = asc_key
     build_app(

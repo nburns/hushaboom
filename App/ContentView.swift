@@ -59,6 +59,7 @@ struct ContentView: View {
                         .frame(width: 84, height: 84)
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier("playPauseButton")
 
                 sleepTimerMenu
                     .offset(x: -88)
@@ -73,6 +74,7 @@ struct ContentView: View {
                         .frame(width: 44, height: 44)
                 }
                 .buttonStyle(.plain)
+                .accessibilityIdentifier("settingsButton")
                 .offset(x: 88)
                 .sheet(isPresented: $showingSettings) {
                     SettingsView(model: model)
@@ -126,6 +128,7 @@ struct ContentView: View {
             .foregroundColor(model.sleepTimerEnd == nil ? .secondary : .accentColor)
             .frame(minWidth: 44, minHeight: 44)
         }
+        .accessibilityIdentifier("sleepTimerMenu")
         .menuStyle(.borderlessButton)
         .fixedSize()
         .sheet(item: $timerSheet) { sheet in

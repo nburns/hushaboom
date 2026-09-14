@@ -1,0 +1,28 @@
+{
+  "configurations" : [
+    {
+      "id" : "8A1F0C3E-0000-4000-8000-000000000001",
+      "name" : "Screenshots",
+      "options" : {
+        "userAttachmentLifetime" : "keepNever"
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:Hushaboom.xcodeproj",
+      "identifier" : "Hushaboom-iOS",
+      "name" : "Hushaboom-iOS"
+    }
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:Hushaboom.xcodeproj",
+        "identifier" : "Hushaboom-iOSUITests",
+        "name" : "Hushaboom-iOSUITests"
+      }
+    }
+  ],
+  "version" : 1
+}

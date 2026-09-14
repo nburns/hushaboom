@@ -1,0 +1,27 @@
+{
+  "configurations" : [
+    {
+      "id" : "8A1F0C3E-0000-4000-8000-000000000002",
+      "name" : "Default",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+
+  },
+  "testTargets" : [
+    {
+      "skippedTests" : [
+        "ScreenshotTests"
+      ],
+      "target" : {
+        "containerPath" : "container:Hushaboom.xcodeproj",
+        "identifier" : "Hushaboom-iOSUITests",
+        "name" : "Hushaboom-iOSUITests"
+      }
+    }
+  ],
+  "version" : 1
+}

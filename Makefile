@@ -17,7 +17,7 @@ XCPROJ        := Hushaboom.xcodeproj
 ASC_KEY_PATH  ?= $(HOME)/.appstoreconnect/private_keys/AuthKey_$(ASC_KEY_ID).p8
 
 .PHONY: help setup install-key generate build build-ios test run run-simulator run-ios \
-        logs-ios archive-ios archive-mac beta beta-ios beta-mac icon clean
+        logs-ios archive-ios archive-mac beta beta-ios beta-mac screenshots screenshots-ios screenshots-mac icon clean
 
 help:
 	@echo "Targets:"
@@ -36,6 +36,9 @@ help:
 	@echo "  beta            Upload both platforms to TestFlight"
 	@echo "  beta-ios        Upload the iOS build to TestFlight"
 	@echo "  beta-mac        Upload the macOS build to TestFlight"
+	@echo "  screenshots     Capture all App Store screenshots (iOS + macOS)"
+	@echo "  screenshots-ios Capture iPhone and iPad screenshots (fastlane snapshot)"
+	@echo "  screenshots-mac Capture macOS screenshots (XCUITest + result bundle)"
 	@echo "  icon            Regenerate Design/icon/ from Design/generate-icon.py"
 	@echo "  clean           Remove $(BUILD_DIR)"
 
@@ -114,6 +117,22 @@ beta-ios:
 
 beta-mac:
 	BUILD_NUMBER="$(BUILD_NUMBER)" fastlane mac beta
+
+screenshots: screenshots-ios screenshots-mac
+
+screenshots-ios:
+	fastlane ios screenshots
+
+# The macOS test runner is sandboxed, so the PNGs come out of the result
+# bundle rather than being written straight to disk.
+screenshots-mac:
+	rm -rf -- "$(BUILD_DIR)/mac-screenshots.xcresult" fastlane/screenshots/mac
+	xcodebuild test -scheme "$(MAC_SCHEME)" -testPlan Screenshots-macOS -destination 'platform=macOS' \
+		-derivedDataPath "$(BUILD_DIR)" -resultBundlePath "$(BUILD_DIR)/mac-screenshots.xcresult"
+	mkdir -p fastlane/screenshots/mac
+	xcrun xcresulttool export attachments --path "$(BUILD_DIR)/mac-screenshots.xcresult" \
+		--output-path fastlane/screenshots/mac
+	python3 Scripts/rename-mac-screenshots.py fastlane/screenshots/mac
 
 icon:
 	python3 Design/generate-icon.py

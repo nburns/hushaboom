@@ -1,0 +1,17 @@
+{
+  "configurations" : [
+    { "id" : "8A1F0C3E-0000-4000-8000-000000000003", "name" : "Screenshots-macOS", "options" : { } }
+  ],
+  "defaultOptions" : { },
+  "testTargets" : [
+    {
+      
+      "target" : {
+        "containerPath" : "container:Hushaboom.xcodeproj",
+        "identifier" : "Hushaboom-macOSUITests",
+        "name" : "Hushaboom-macOSUITests"
+      }
+    }
+  ],
+  "version" : 1
+}

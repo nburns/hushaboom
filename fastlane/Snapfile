@@ -1,0 +1,18 @@
+devices([
+  "iPhone 17 Pro Max",
+  "iPad Pro 13-inch (M5)",
+])
+
+languages(["en-US"])
+
+scheme("Hushaboom-iOS")
+testplan("Screenshots")
+
+output_directory("./fastlane/screenshots")
+clear_previous_screenshots(true)
+
+# Freeze the status bar: 9:41, full bars, no carrier clutter.
+override_status_bar(true)
+
+concurrent_simulators(false)
+stop_after_first_error(true)
