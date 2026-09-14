@@ -1,0 +1,25 @@
+!!!5
+%html{lang: 'en'}
+  %head
+    %meta{charset: 'utf-8'}
+    %meta{name: :viewport, content: 'width=device-width, initial-scale=1'}
+
+    %title
+      - if current_page.data.title
+        = "#{current_page.data.title} · Hushaboom"
+      - else
+        Hushaboom
+
+    - if current_page.data.description
+      %meta{name: :description, content: current_page.data.description}
+
+    = stylesheet_link_tag 'site'
+
+  %body
+    %main
+      = yield
+
+    %footer
+      %a{href: '/'} Hushaboom
+      %span &middot;
+      %a{href: '/privacy'} Privacy

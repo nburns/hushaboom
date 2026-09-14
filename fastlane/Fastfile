@@ -1,0 +1,73 @@
+default_platform(:ios)
+
+# Signing is automatic (CODE_SIGN_STYLE: Automatic in project.yml), so these
+# lanes only supply the API key and let Xcode fetch certs and profiles.
+
+def asc_key
+  key_id = ENV["ASC_KEY_ID"]
+  issuer_id = ENV["ASC_ISSUER_ID"]
+  UI.user_error!("ASC_KEY_ID not set - copy .env.example to .env") if key_id.to_s.empty?
+  UI.user_error!("ASC_ISSUER_ID not set - copy .env.example to .env") if issuer_id.to_s.empty?
+
+  path = File.expand_path(
+    ENV["ASC_KEY_PATH"].to_s.empty? ? "~/.appstoreconnect/private_keys/AuthKey_#{key_id}.p8" : ENV["ASC_KEY_PATH"]
+  )
+  unless File.exist?(path)
+    UI.user_error!("App Store Connect key not found at #{path} - run: make install-key SRC=<path to .p8>")
+  end
+
+  app_store_connect_api_key(key_id: key_id, issuer_id: issuer_id, key_filepath: path)
+end
+
+def build_number
+  ENV["BUILD_NUMBER"].to_s.empty? ? Time.now.strftime("%Y.%-j.%-H") : ENV["BUILD_NUMBER"]
+end
+
+def xcargs
+  "CURRENT_PROJECT_VERSION=#{build_number} -allowProvisioningUpdates"
+end
+
+platform :ios do
+  lane :beta do
+    api_key = asc_key
+    build_app(
+      scheme: "Hushaboom-iOS",
+      configuration: "Release",
+      export_method: "app-store",
+      output_directory: ".build",
+      xcargs: xcargs,
+      api_key: api_key
+    )
+    upload_to_testflight(
+      api_key: api_key,
+      skip_waiting_for_build_processing: true
+    )
+  end
+end
+
+platform :mac do
+  lane :beta do
+    # The Mac App Store rejects unsandboxed apps, and an unsandboxed upload
+    # fails late, after a full release archive - so check before building.
+    unless File.read("../Hushaboom.xcodeproj/project.pbxproj").include?("CODE_SIGN_ENTITLEMENTS")
+      UI.user_error!("The macOS target has no entitlements file; the Mac App Store requires com.apple.security.app-sandbox")
+    end
+
+    api_key = asc_key
+    # Exporting a .pkg needs a "3rd Party Mac Developer Installer" certificate
+    # in the keychain; Xcode does not create that one automatically.
+    build_mac_app(
+      scheme: "Hushaboom-macOS",
+      configuration: "Release",
+      export_method: "app-store",
+      output_directory: ".build",
+      xcargs: xcargs,
+      api_key: api_key
+    )
+    upload_to_testflight(
+      api_key: api_key,
+      app_platform: "osx",
+      skip_waiting_for_build_processing: true
+    )
+  end
+end

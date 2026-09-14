@@ -1,0 +1,2 @@
+brew "fastlane"
+brew "xcodegen"

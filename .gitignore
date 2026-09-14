@@ -1,0 +1,42 @@
+.env
+
+# Xcode
+Hushaboom.xcodeproj/
+build/
+DerivedData/
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.hmap
+*.moved-aside
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+
+# Code signing credentials
+*.mobileprovision
+*.cer
+*.certSigningRequest
+*.p12
+*.p8
+
+# Middleman (website/); the built site in docs/ IS committed, for GitHub Pages
+website/.bundle
+website/.cache
+website/.sass-cache
+
+# fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
+
+# Build output
+*.ipa
+*.dSYM.zip
+
+# macOS
+.DS_Store
+*.swp

@@ -1,0 +1,104 @@
+$background-regular: #fff;
+$text-regular: #1a1a1a;
+$muted-regular: #666;
+$link-regular: #0a58d0;
+
+$background-dark: #1c1c1e;
+$text-dark: #e8e8ea;
+$muted-dark: #9a9aa0;
+$link-dark: #6ea8ff;
+
+body {
+  background-color: $background-regular;
+  color: $text-regular;
+  font-family: -apple-system, BlinkMacSystemFont, "Avenir Next", "Avenir",
+    "Segoe UI", "Lucida Grande", "Helvetica Neue", "Helvetica", "Fira Sans",
+    "Roboto", "Noto", "Droid Sans", "Cantarell", "Oxygen", "Ubuntu",
+    "Franklin Gothic Medium", "Century Gothic", "Liberation Sans", sans-serif;
+  line-height: 1.6;
+  margin: 0;
+  padding: 2.5rem 1.25rem;
+}
+
+main {
+  max-width: 38rem;
+  margin: 0 auto;
+}
+
+h1 {
+  font-size: 2rem;
+  line-height: 1.2;
+  margin: 0 0 1rem;
+}
+
+h2 {
+  font-size: 1.2rem;
+  margin: 2.5rem 0 0.5rem;
+}
+
+p, ul {
+  margin: 0 0 1rem;
+}
+
+ul {
+  padding-left: 1.25rem;
+}
+
+li {
+  margin-bottom: 0.4rem;
+}
+
+.lead {
+  font-size: 1.15rem;
+}
+
+.updated {
+  color: $muted-regular;
+  font-size: 0.9rem;
+  margin-bottom: 2rem;
+}
+
+a {
+  color: $link-regular;
+}
+
+footer {
+  max-width: 38rem;
+  margin: 4rem auto 0;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.12);
+  color: $muted-regular;
+  font-size: 0.9rem;
+
+  a {
+    color: $muted-regular;
+  }
+
+  span {
+    margin: 0 0.4rem;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: $background-dark;
+    color: $text-dark;
+  }
+
+  a {
+    color: $link-dark;
+  }
+
+  .updated {
+    color: $muted-dark;
+  }
+
+  footer {
+    border-top-color: rgba(255, 255, 255, 0.15);
+    color: $muted-dark;
+
+    a {
+      color: $muted-dark;
+    }
+  }
+}
