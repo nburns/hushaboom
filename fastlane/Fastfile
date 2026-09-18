@@ -57,8 +57,8 @@ end
 platform :ios do
   # Screenshots run from their own test plan, so `xcodebuild test` on the app
   # scheme stays simulator-free.
-  lane :screenshots do
-    snapshot
+  lane :screenshots do |options|
+    snapshot(output_directory: options[:output_directory] || "./fastlane/screenshots")
   end
 
   lane :beta do

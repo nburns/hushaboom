@@ -14,6 +14,7 @@ IOS_SIMULATOR ?= iPhone 17
 BUILD_NUMBER  ?= $(shell date +%Y.%-j.%-H)
 
 XCPROJ        := Hushaboom.xcodeproj
+SHOTS_DIR     := fastlane/screenshots/en-US
 ASC_KEY_PATH  ?= $(HOME)/.appstoreconnect/private_keys/AuthKey_$(ASC_KEY_ID).p8
 
 .PHONY: help setup install-key generate build build-ios test run run-simulator run-ios \
@@ -122,25 +123,35 @@ beta-mac:
 
 screenshots: screenshots-ios screenshots-mac
 
+# Both platforms capture into a staging directory and only replace the
+# previous set once the run has succeeded. Deleting up front meant a failed
+# run left nothing behind.
 screenshots-ios:
-	rm -f -- fastlane/screenshots/en-US/iPhone*.png fastlane/screenshots/en-US/iPad*.png
-	fastlane ios screenshots
+	rm -rf -- "$(BUILD_DIR)/ios-shots"
+	fastlane ios screenshots output_directory:"$(CURDIR)/$(BUILD_DIR)/ios-shots"
+	mkdir -p "$(SHOTS_DIR)"
+	rm -f -- $(SHOTS_DIR)/iPhone*.png $(SHOTS_DIR)/iPad*.png
+	cp -- "$(BUILD_DIR)"/ios-shots/en-US/*.png "$(SHOTS_DIR)/"
+	@echo "iOS screenshots updated in $(SHOTS_DIR)"
 
 # The macOS test runner is sandboxed, so the PNGs come out of the result
-# bundle rather than being written straight to disk.
+# bundle rather than being written straight to disk. A copy of the app left
+# running steals the launch and the test never sees a window.
 screenshots-mac:
 	rm -rf -- "$(BUILD_DIR)/mac-screenshots.xcresult" "$(BUILD_DIR)/mac-shots"
-	rm -f -- fastlane/screenshots/en-US/mac-*.png
+	-pkill -x Hushaboom
 	xcodebuild test -scheme "$(MAC_SCHEME)" -testPlan Screenshots-macOS -destination 'platform=macOS' \
 		-derivedDataPath "$(BUILD_DIR)" -resultBundlePath "$(BUILD_DIR)/mac-screenshots.xcresult"
-	mkdir -p "$(BUILD_DIR)/mac-shots" fastlane/screenshots/en-US
+	mkdir -p "$(BUILD_DIR)/mac-shots"
 	xcrun xcresulttool export attachments --path "$(BUILD_DIR)/mac-screenshots.xcresult" \
 		--output-path "$(BUILD_DIR)/mac-shots"
 	python3 Scripts/rename-mac-screenshots.py "$(BUILD_DIR)/mac-shots"
+	mkdir -p "$(SHOTS_DIR)"
+	rm -f -- $(SHOTS_DIR)/mac-*.png
 	@for f in "$(BUILD_DIR)"/mac-shots/*.png; do \
-		cp -- "$$f" "fastlane/screenshots/en-US/mac-$$(basename "$$f")"; \
+		cp -- "$$f" "$(SHOTS_DIR)/mac-$$(basename "$$f")"; \
 	done
-	@echo "macOS screenshots copied into fastlane/screenshots/en-US/"
+	@echo "macOS screenshots updated in $(SHOTS_DIR)"
 
 create-app:
 	fastlane create_app
