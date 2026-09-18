@@ -117,10 +117,10 @@ archive-mac:
 beta: beta-ios beta-mac
 
 beta-ios:
-	BUILD_NUMBER="$(BUILD_NUMBER)" fastlane ios beta
+	BUILD_NUMBER="$(BUILD_NUMBER)" bundle exec fastlane ios beta
 
 beta-mac:
-	BUILD_NUMBER="$(BUILD_NUMBER)" fastlane mac beta
+	BUILD_NUMBER="$(BUILD_NUMBER)" bundle exec fastlane mac beta
 
 screenshots: screenshots-ios screenshots-mac
 
@@ -129,7 +129,7 @@ screenshots: screenshots-ios screenshots-mac
 # run left nothing behind.
 screenshots-ios:
 	rm -rf -- "$(BUILD_DIR)/ios-shots"
-	fastlane ios screenshots output_directory:"$(CURDIR)/$(BUILD_DIR)/ios-shots"
+	bundle exec fastlane ios screenshots output_directory:"$(CURDIR)/$(BUILD_DIR)/ios-shots"
 	mkdir -p "$(SHOTS_DIR)"
 	rm -f -- $(SHOTS_DIR)/iPhone*.png $(SHOTS_DIR)/iPad*.png
 	cp -- "$(BUILD_DIR)"/ios-shots/en-US/*.png "$(SHOTS_DIR)/"
@@ -153,10 +153,10 @@ screenshots-mac:
 	@echo "macOS screenshots updated in $(MAC_SHOTS_DIR)"
 
 create-app:
-	fastlane create_app
+	bundle exec fastlane create_app
 
 metadata:
-	fastlane metadata
+	bundle exec fastlane metadata
 
 icon:
 	python3 Design/generate-icon.py
