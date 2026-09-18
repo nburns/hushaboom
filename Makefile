@@ -15,6 +15,7 @@ BUILD_NUMBER  ?= $(shell date +%Y.%-j.%-H)
 
 XCPROJ        := Hushaboom.xcodeproj
 SHOTS_DIR     := fastlane/screenshots/en-US
+MAC_SHOTS_DIR := fastlane/screenshots-mac/en-US
 ASC_KEY_PATH  ?= $(HOME)/.appstoreconnect/private_keys/AuthKey_$(ASC_KEY_ID).p8
 
 .PHONY: help setup install-key generate build build-ios test run run-simulator run-ios \
@@ -146,12 +147,10 @@ screenshots-mac:
 	xcrun xcresulttool export attachments --path "$(BUILD_DIR)/mac-screenshots.xcresult" \
 		--output-path "$(BUILD_DIR)/mac-shots"
 	python3 Scripts/rename-mac-screenshots.py "$(BUILD_DIR)/mac-shots"
-	mkdir -p "$(SHOTS_DIR)"
-	rm -f -- $(SHOTS_DIR)/mac-*.png
-	@for f in "$(BUILD_DIR)"/mac-shots/*.png; do \
-		cp -- "$$f" "$(SHOTS_DIR)/mac-$$(basename "$$f")"; \
-	done
-	@echo "macOS screenshots updated in $(SHOTS_DIR)"
+	mkdir -p "$(MAC_SHOTS_DIR)"
+	rm -f -- $(MAC_SHOTS_DIR)/*.png
+	cp -- "$(BUILD_DIR)"/mac-shots/*.png "$(MAC_SHOTS_DIR)/"
+	@echo "macOS screenshots updated in $(MAC_SHOTS_DIR)"
 
 create-app:
 	fastlane create_app

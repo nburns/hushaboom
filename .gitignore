@@ -34,6 +34,7 @@ fastlane/metadata/review_information/
 fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots
+fastlane/screenshots-mac
 fastlane/test_output
 
 # Build output

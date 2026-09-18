@@ -66,10 +66,18 @@ lane :create_app do
 end
 
 # Pushes metadata and screenshots only - never the binary, which the beta
-# lanes handle.
+# lanes handle. Universal purchase gives each platform its own App Store
+# version, and deliver targets one platform per run, so this uploads twice.
 lane :metadata do
+  push_metadata(platform: "ios", screenshots_path: "./fastlane/screenshots")
+  push_metadata(platform: "osx", screenshots_path: "./fastlane/screenshots-mac")
+end
+
+private_lane :push_metadata do |options|
   upload_to_app_store(
     api_key: asc_key,
+    platform: options[:platform],
+    screenshots_path: options[:screenshots_path],
     skip_binary_upload: true,
     skip_app_version_update: false,
     overwrite_screenshots: true,
