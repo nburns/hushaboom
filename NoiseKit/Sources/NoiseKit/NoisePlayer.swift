@@ -8,6 +8,10 @@ public final class NoisePlayer {
     private let renderState: RenderState
     private var observers: [NSObjectProtocol] = []
     private var storedVolume: Float = 0.7
+    /// Whether the route in use at the last successful start was something
+    /// other than the built-in speaker. Without it, an unplug cannot be told
+    /// apart from having been on the speaker all along.
+    private var wasUsingExternalOutput = false
 
     public private(set) var isPlaying = false
 
@@ -115,6 +119,9 @@ public final class NoisePlayer {
         try applyAudioSession()
         #endif
         try engine.start()
+        #if os(iOS)
+        wasUsingExternalOutput = !routeFellBackToSpeaker
+        #endif
     }
 
     private func configureEngine() {
@@ -144,6 +151,20 @@ public final class NoisePlayer {
         })
 
         #if os(iOS)
+        // Losing the device the user was listening on is intent to stop, not
+        // something to recover from. AVAudioEngineConfigurationChange carries
+        // no reason code, so only this notification can tell the two apart.
+        observers.append(center.addObserver(
+            forName: AVAudioSession.routeChangeNotification, object: nil, queue: .main
+        ) { [weak self] notification in
+            guard let self,
+                  let rawReason = notification.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt,
+                  AVAudioSession.RouteChangeReason(rawValue: rawReason) == .oldDeviceUnavailable,
+                  self.isPlaying else { return }
+            self.stop()
+            self.onPlaybackStateChange?(false)
+        })
+
         observers.append(center.addObserver(
             forName: AVAudioSession.interruptionNotification, object: nil, queue: .main
         ) { [weak self] notification in
@@ -173,8 +194,28 @@ public final class NoisePlayer {
         #endif
     }
 
+    /// True once playback has fallen back to the built-in speaker, which on
+    /// iOS only happens because the previous output went away.
+    private var routeFellBackToSpeaker: Bool {
+        #if os(iOS)
+        return AVAudioSession.sharedInstance().currentRoute.outputs
+            .contains { $0.portType == .builtInSpeaker }
+        #else
+        return false
+        #endif
+    }
+
     private func recoverIfNeeded(attempt: Int = 0) {
         guard isPlaying else { return }
+        // AVAudioEngineConfigurationChange and routeChangeNotification have no
+        // guaranteed ordering. If the config change lands first, resuming here
+        // would put a blip of noise through the speaker before the route
+        // handler stops us, so check the route rather than trusting order.
+        if wasUsingExternalOutput && routeFellBackToSpeaker {
+            stop()
+            onPlaybackStateChange?(false)
+            return
+        }
         do {
             try startEngine()
             onPlaybackStateChange?(true)
