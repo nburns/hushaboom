@@ -193,6 +193,7 @@ struct ContentView: View {
         case .ocean:
             return [
                 ("Period", $model.oceanWavePeriod),
+                ("Variation", $model.oceanWaveVariation),
                 ("Height", $model.oceanWaveHeight),
                 ("Tone", $model.oceanTone),
             ]

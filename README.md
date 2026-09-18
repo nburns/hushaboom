@@ -138,11 +138,11 @@ player.volume = 0.5                      // master volume
 player.stop()
 ```
 
-`OceanParameters` also has a raw-field initializer (wave timing ranges,
-bed/swell balance, carrier blend, crash brightness) when the three macros
-aren't enough. The player restarts itself after route changes, iOS
-interruptions, and media daemon resets; `onPlaybackStateChange` reports
-recoveries and final failures.
+`OceanParameters` also has a raw-field initializer (typical wave interval
+and its per-wave variation, bed/swell balance, carrier blend, crash
+brightness) when the four macros aren't enough. The player restarts itself
+after route changes, iOS interruptions, and media daemon resets;
+`onPlaybackStateChange` reports recoveries and final failures.
 
 All colors are normalized to the same RMS (-14 dBFS) so mixing levels are
 comparable. Generators are seedable and deterministic for a fixed seed.

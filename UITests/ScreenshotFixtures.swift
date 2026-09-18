@@ -14,6 +14,7 @@ enum ScreenshotFixtures {
         "level.trees": 0,
         "volume": 0.7,
         "ocean.wavePeriod": 0.55,
+        "ocean.waveVariation": 0.6,
         "ocean.waveHeight": 0.7,
         "ocean.tone": 0.4,
         "rain.intensity": 0.5,

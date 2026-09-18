@@ -9,6 +9,7 @@ final class PlayerModel: ObservableObject {
         static func level(_ type: NoiseType) -> String { "level.\(type.rawValue)" }
         static let volume = "volume"
         static let oceanWavePeriod = "ocean.wavePeriod"
+        static let oceanWaveVariation = "ocean.waveVariation"
         static let oceanWaveHeight = "ocean.waveHeight"
         static let oceanTone = "ocean.tone"
         static let windGustiness = "wind.gustiness"
@@ -49,6 +50,13 @@ final class PlayerModel: ObservableObject {
         didSet {
             pushOceanParameters()
             store.set(oceanWavePeriod, forKey: Keys.oceanWavePeriod)
+        }
+    }
+
+    @Published var oceanWaveVariation: Double {
+        didSet {
+            pushOceanParameters()
+            store.set(oceanWaveVariation, forKey: Keys.oceanWaveVariation)
         }
     }
 
@@ -163,6 +171,7 @@ final class PlayerModel: ObservableObject {
         })
         volume = restored(Keys.volume, default: 0.7)
         oceanWavePeriod = restored(Keys.oceanWavePeriod, default: 0.5)
+        oceanWaveVariation = restored(Keys.oceanWaveVariation, default: 0.5)
         oceanWaveHeight = restored(Keys.oceanWaveHeight, default: 0.5)
         oceanTone = restored(Keys.oceanTone, default: 0.5)
         windGustiness = restored(Keys.windGustiness, default: 0.5)
@@ -277,7 +286,8 @@ final class PlayerModel: ObservableObject {
         player.oceanParameters = OceanParameters(
             wavePeriod: Float(oceanWavePeriod),
             waveHeight: Float(oceanWaveHeight),
-            tone: Float(oceanTone)
+            tone: Float(oceanTone),
+            waveVariation: Float(oceanWaveVariation)
         )
     }
 

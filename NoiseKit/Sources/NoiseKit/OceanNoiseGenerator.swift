@@ -1,16 +1,18 @@
 import Foundation
 
 /// Raw synthesis controls for `OceanNoiseGenerator`. Defaults reproduce the
-/// stock ocean sound; `init(waves:tone:)` maps two perceptual macros onto
-/// the raw fields.
+/// stock ocean sound; `init(wavePeriod:waveHeight:tone:waveVariation:)` maps
+/// four perceptual macros onto the raw fields.
 public struct OceanParameters: Equatable, Sendable {
     /// Surf level between waves, 0...1 of the envelope.
     public var bedLevel: Float
     /// How far above the bed a full-height wave swells, 0...1.
     public var waveDepth: Float
-    /// Wave cycle length range in seconds.
-    public var minWaveSeconds: Float
-    public var maxWaveSeconds: Float
+    /// Typical wave cycle length in seconds; each wave is drawn around it.
+    public var waveSeconds: Float
+    /// Per-wave spread as a fraction of `waveSeconds`, 0...1. At 0 every
+    /// wave lasts exactly `waveSeconds`.
+    public var waveSecondsVariation: Float
     /// Random per-wave height range, 0...1.
     public var minWavePeak: Float
     public var maxWavePeak: Float
@@ -25,8 +27,8 @@ public struct OceanParameters: Equatable, Sendable {
     public init(
         bedLevel: Float = 0.30,
         waveDepth: Float = 0.70,
-        minWaveSeconds: Float = 6,
-        maxWaveSeconds: Float = 14,
+        waveSeconds: Float = 10,
+        waveSecondsVariation: Float = 0.375,
         minWavePeak: Float = 0.5,
         maxWavePeak: Float = 1.0,
         minRiseFraction: Float = 0.5,
@@ -36,8 +38,8 @@ public struct OceanParameters: Equatable, Sendable {
     ) {
         self.bedLevel = bedLevel
         self.waveDepth = waveDepth
-        self.minWaveSeconds = minWaveSeconds
-        self.maxWaveSeconds = maxWaveSeconds
+        self.waveSeconds = waveSeconds
+        self.waveSecondsVariation = waveSecondsVariation
         self.minWavePeak = minWavePeak
         self.maxWavePeak = maxWavePeak
         self.minRiseFraction = minRiseFraction
@@ -49,17 +51,19 @@ public struct OceanParameters: Equatable, Sendable {
     /// Perceptual macros, each 0...1:
     /// `wavePeriod` 0 = short frequent waves ... 1 = long slow rollers,
     /// `waveHeight` 0 = gentle swells over steady surf ... 1 = big crashes,
-    /// `tone` 0 = deep/distant ... 1 = bright/close.
-    /// (0.5, 0.5, 0.5) approximates the defaults.
-    public init(wavePeriod: Float, waveHeight: Float, tone: Float) {
+    /// `tone` 0 = deep/distant ... 1 = bright/close,
+    /// `waveVariation` 0 = every wave the same length ... 1 = wildly irregular.
+    /// (0.5, 0.5, 0.5, 0.5) approximates the defaults.
+    public init(wavePeriod: Float, waveHeight: Float, tone: Float, waveVariation: Float = 0.5) {
         let p = max(0, min(1, wavePeriod))
         let h = max(0, min(1, waveHeight))
         let t = max(0, min(1, tone))
+        let v = max(0, min(1, waveVariation))
         self.init(
             bedLevel: 0.45 - 0.30 * h,
             waveDepth: 0.55 + 0.30 * h,
-            minWaveSeconds: 4 + 5 * p,
-            maxWaveSeconds: 8 + 12 * p,
+            waveSeconds: 6 + 8.5 * p,
+            waveSecondsVariation: 0.75 * v,
             minWavePeak: 0.60 - 0.25 * h,
             maxWavePeak: 0.80 + 0.20 * h,
             minRiseFraction: 0.60 - 0.15 * h,
@@ -74,7 +78,8 @@ public struct OceanParameters: Equatable, Sendable {
 
 /// Waves synthesized as a brown/pink noise carrier shaped by an endless
 /// series of randomized swells: each wave rises (raised cosine), crashes,
-/// and tails off, with random length, height, and asymmetry per wave. As
+/// and tails off, with random height and asymmetry per wave and a length
+/// drawn around `waveSeconds` so waves arrive at uneven intervals. As
 /// a wave crashes the carrier crossfades toward brighter noise, and a
 /// constant bed level keeps distant surf audible between waves.
 public struct OceanNoiseGenerator: NoiseGenerator {
@@ -111,10 +116,19 @@ public struct OceanNoiseGenerator: NoiseGenerator {
         smoothedEnvelope = parameters.bedLevel
     }
 
+    /// Symmetric, centre-weighted draw around `waveSeconds`: most waves land
+    /// near the setting while the extremes stay reachable.
+    mutating func nextWaveSeconds() -> Float {
+        let centre = max(0.5, parameters.waveSeconds)
+        let spread = max(0, min(1, parameters.waveSecondsVariation))
+        guard spread > 0 else { return centre }
+        // Mean of three uniforms is bell-shaped, sd a third of the half-width
+        let t = (rng.nextUniform() + rng.nextUniform() + rng.nextUniform()) / 3
+        return max(0.5, centre * (1 + spread * t))
+    }
+
     private mutating func startNextWave() {
-        let seconds = parameters.minWaveSeconds
-            + rng.nextUniform01() * max(0, parameters.maxWaveSeconds - parameters.minWaveSeconds)
-        waveLength = max(1, Int(seconds * sampleRate))
+        waveLength = max(1, Int(nextWaveSeconds() * sampleRate))
         wavePosition = 0
         wavePeak = parameters.minWavePeak
             + rng.nextUniform01() * max(0, parameters.maxWavePeak - parameters.minWavePeak)

@@ -72,16 +72,23 @@ final class GeneratorTests: XCTestCase {
     }
 
     func testOceanStaysBoundedAcrossMacroCorners() {
-        var corners: [(Float, Float, Float)] = [(0.5, 0.5, 0.5)]
+        var corners: [(Float, Float, Float, Float)] = [(0.5, 0.5, 0.5, 0.5)]
         for p: Float in [0, 1] {
             for h: Float in [0, 1] {
                 for t: Float in [0, 1] {
-                    corners.append((p, h, t))
+                    for v: Float in [0, 1] {
+                        corners.append((p, h, t, v))
+                    }
                 }
             }
         }
-        for (period, height, tone) in corners {
-            let params = OceanParameters(wavePeriod: period, waveHeight: height, tone: tone)
+        for (period, height, tone, variation) in corners {
+            let params = OceanParameters(
+                wavePeriod: period,
+                waveHeight: height,
+                tone: tone,
+                waveVariation: variation
+            )
             var generator = OceanNoiseGenerator(seed: 99, parameters: params)
             var sumSquares: Float = 0
             var peak: Float = 0
@@ -91,7 +98,7 @@ final class GeneratorTests: XCTestCase {
                 peak = max(peak, abs(s))
             }
             let rms = (sumSquares / 2_000_000).squareRoot()
-            let label = "ocean(period:\(period) height:\(height) tone:\(tone))"
+            let label = "ocean(period:\(period) height:\(height) tone:\(tone) variation:\(variation))"
             XCTAssertLessThanOrEqual(peak, 1.0, "\(label) peak \(peak)")
             XCTAssertGreaterThan(rms, 0.04, "\(label) RMS \(rms) too quiet")
             XCTAssertLessThan(rms, 0.22, "\(label) RMS \(rms) too loud")
@@ -99,14 +106,44 @@ final class GeneratorTests: XCTestCase {
     }
 
     func testOceanMacroMidpointMatchesDefaults() {
-        let macro = OceanParameters(wavePeriod: 0.5, waveHeight: 0.5, tone: 0.5)
+        let macro = OceanParameters(wavePeriod: 0.5, waveHeight: 0.5, tone: 0.5, waveVariation: 0.5)
         let defaults = OceanParameters()
         XCTAssertEqual(macro.bedLevel, defaults.bedLevel, accuracy: 0.01)
         XCTAssertEqual(macro.waveDepth, defaults.waveDepth, accuracy: 0.01)
-        XCTAssertEqual(macro.minWaveSeconds, defaults.minWaveSeconds, accuracy: 1.0)
-        XCTAssertEqual(macro.maxWaveSeconds, defaults.maxWaveSeconds, accuracy: 1.0)
+        XCTAssertEqual(macro.waveSeconds, defaults.waveSeconds, accuracy: 1.0)
+        XCTAssertEqual(macro.waveSecondsVariation, defaults.waveSecondsVariation, accuracy: 0.01)
         XCTAssertEqual(macro.carrierMix, defaults.carrierMix, accuracy: 0.01)
         XCTAssertEqual(macro.crashBrightness, defaults.crashBrightness, accuracy: 0.01)
+    }
+
+    func testOceanWaveLengthsClusterAroundTheSetting() {
+        let params = OceanParameters(waveSeconds: 10, waveSecondsVariation: 0.4)
+        var generator = OceanNoiseGenerator(seed: 7, parameters: params)
+        let draws = (0..<4000).map { _ in generator.nextWaveSeconds() }
+
+        for seconds in draws {
+            XCTAssertGreaterThanOrEqual(seconds, 6 - 0.001, "draw \(seconds) below the spread")
+            XCTAssertLessThanOrEqual(seconds, 14 + 0.001, "draw \(seconds) above the spread")
+        }
+
+        let mean = draws.reduce(0, +) / Float(draws.count)
+        XCTAssertEqual(mean, 10, accuracy: 0.2, "draws should centre on waveSeconds")
+
+        // A uniform draw would put half the mass in the middle half; a
+        // centre-weighted one puts far more
+        let middleHalf = draws.filter { $0 > 8 && $0 < 12 }.count
+        XCTAssertGreaterThan(
+            Float(middleHalf) / Float(draws.count), 0.6,
+            "draws should cluster near the setting, not spread uniformly"
+        )
+    }
+
+    func testOceanZeroVariationGivesIdenticalWaveLengths() {
+        let params = OceanParameters(waveSeconds: 8, waveSecondsVariation: 0)
+        var generator = OceanNoiseGenerator(seed: 7, parameters: params)
+        for _ in 0..<50 {
+            XCTAssertEqual(generator.nextWaveSeconds(), 8)
+        }
     }
 
     func testRenderIntoBufferMatchesNextSample() {
