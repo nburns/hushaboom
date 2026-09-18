@@ -27,17 +27,42 @@ def xcargs
   "CURRENT_PROJECT_VERSION=#{build_number} -allowProvisioningUpdates"
 end
 
-# Creates the App Store Connect record and registers the bundle ID. Both are
-# effectively permanent, so this is deliberately a separate lane.
+# Registers the bundle ID, which is permanent once created.
+#
+# The app record itself cannot be automated: the App Store Connect API allows
+# only GET and UPDATE on `apps`, and `produce` falls back to the legacy
+# endpoint that needs an interactive Apple ID login. So this reports what is
+# left to do by hand.
 lane :create_app do
-  produce(
-    api_key: asc_key,
-    app_name: "Hushaboom",
-    app_identifier: "io.burns.hushaboom",
-    language: "English (U.S.)",
-    sku: "hushaboom",
-    platforms: ["ios", "osx"]
-  )
+  asc_key
+  identifier = "io.burns.hushaboom"
+
+  if Spaceship::ConnectAPI::BundleId.all.find { |b| b.identifier == identifier }
+    UI.success("Bundle ID #{identifier} is registered")
+  else
+    Spaceship::ConnectAPI::BundleId.create(
+      name: "Hushaboom", identifier: identifier, platform: "UNIVERSAL"
+    )
+    UI.success("Registered bundle ID #{identifier}")
+  end
+
+  app = Spaceship::ConnectAPI::App.find(identifier)
+  if app
+    UI.success("App record exists: #{app.name} (#{app.id}) - `fastlane metadata` is ready to run")
+  else
+    UI.user_error!(<<~MESSAGE)
+      No app record yet, and the API cannot create one.
+
+      Create it at https://appstoreconnect.apple.com/apps (+ > New App):
+        Platforms:        tick BOTH iOS and macOS, for universal purchase
+        Name:             Hushaboom
+        Primary language: English (U.S.)
+        Bundle ID:        #{identifier}
+        SKU:              hushaboom
+
+      Then run `make metadata`.
+    MESSAGE
+  end
 end
 
 # Pushes metadata and screenshots only - never the binary, which the beta
