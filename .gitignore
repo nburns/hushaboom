@@ -29,6 +29,8 @@ website/.cache
 website/.sass-cache
 
 # fastlane
+# App Review contact info holds a personal phone number; this repo is public.
+fastlane/metadata/review_information/
 fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots
