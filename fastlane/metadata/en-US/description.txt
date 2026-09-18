@@ -1,33 +1,9 @@
-Hushaboom is a noise generator for sleep, focus, and masking the world out.
+A simple white noise and ambient sound app.
 
-Seven sounds, mixed however you like: white, pink, and brown noise, plus ocean waves, wind, rain, and rustling trees.
+Seven sounds you can mix together: white, pink, and brown noise, plus ocean, wind, rain, and trees. The nature sounds are synthesized rather than sampled, so nothing loops.
 
-NOTHING LOOPS
+Each sound has its own level and its own controls. Set a sleep timer and it stops on its own.
 
-Every nature sound is synthesized in real time rather than played back from a recording. There is no audio file cycling underneath, which means there is no seam to hear and no pattern to start noticing at three in the morning. It simply keeps going.
+No ads. No tracking. No account. No network code at all.
 
-SHAPE EACH SOUND
-
-The nature sounds are not fixed presets. Open one and you can adjust what it actually is:
-
-- Ocean: wave period, wave height, and tone
-- Wind: gustiness and tone
-- Rain: intensity, rate, drop size, and the surface it lands on
-- Trees: breeze, density, and leaf size
-
-Every sound has its own level, so you can set a quiet rain over a deep brown noise bed, or an ocean with just a little wind behind it.
-
-SLEEP TIMER
-
-Stop after 15, 30, or 60 minutes, a custom length, or at a particular time of night.
-
-BUILT TO STAY OUT OF THE WAY
-
-- Plays in the background and from the Lock Screen
-- Optionally mixes with audio from other apps instead of interrupting them
-- Picks itself back up after interruptions like phone calls and alarms
-- One purchase covers iPhone, iPad, and Mac
-
-PRIVATE BY CONSTRUCTION
-
-Hushaboom has no networking code at all. There is no account, no analytics, no advertising, and no tracking. It never records anything and never asks for the microphone. Your settings stay on your device. It works exactly the same in airplane mode.
+One purchase covers iPhone, iPad, and Mac.
