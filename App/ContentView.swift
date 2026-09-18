@@ -329,9 +329,9 @@ struct SettingsView: View {
         NavigationView {
             Form {
                 Section {
-                    Toggle("Play in background", isOn: $model.mixWithOtherAudio)
+                    Toggle("Mix with other audio", isOn: $model.mixWithOtherAudio)
                 } footer: {
-                    Text("Keeps playing mixed with audio from other apps instead of pausing them. While mixing, lock screen playback controls are unavailable.")
+                    Text("Keep playing alongside audio from other apps instead of pausing them. Lock Screen and Control Center playback controls are unavailable while mixing.")
                 }
             }
             .navigationTitle("Settings")

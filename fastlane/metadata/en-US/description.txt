@@ -19,13 +19,13 @@ Every sound has its own level, so you can set a quiet rain over a deep brown noi
 
 SLEEP TIMER
 
-Fade out after 15, 30, or 60 minutes, a custom length, or at a particular time of night.
+Stop after 15, 30, or 60 minutes, a custom length, or at a particular time of night.
 
 BUILT TO STAY OUT OF THE WAY
 
 - Plays in the background and from the Lock Screen
 - Optionally mixes with audio from other apps instead of interrupting them
-- Recovers on its own after calls, route changes, and unplugged headphones
+- Picks itself back up after interruptions like phone calls and alarms
 - One purchase covers iPhone, iPad, and Mac
 
 PRIVATE BY CONSTRUCTION
