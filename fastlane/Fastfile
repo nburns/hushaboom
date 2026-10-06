@@ -1,9 +1,29 @@
 default_platform(:ios)
 
+IOS_SCHEME = "Hushaboom-iOS"
+MAC_SCHEME = "Hushaboom-macOS"
+IOS_SCREENSHOTS = "./fastlane/screenshots"
+MAC_SCREENSHOTS = "./fastlane/screenshots-mac"
+RATING_CONFIG = "./fastlane/rating_config.json"
+
+# Prices are set per territory relative to this one.
+BASE_TERRITORY = "USA"
+
+# The only two review declarations the API accepts from here; the rest of the
+# App Privacy questionnaire exists on the website only.
+SUBMISSION_INFORMATION = {
+  export_compliance_uses_encryption: false,
+  content_rights_contains_third_party_content: false
+}.freeze
+
 # Signing is automatic (CODE_SIGN_STYLE: Automatic in project.yml), so these
 # lanes only supply the API key and let Xcode fetch certs and profiles.
 
-def asc_key
+def app_identifier
+  CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier)
+end
+
+def asc_credentials
   key_id = ENV["ASC_KEY_ID"]
   issuer_id = ENV["ASC_ISSUER_ID"]
   UI.user_error!("ASC_KEY_ID not set - copy .env.example to .env") if key_id.to_s.empty?
@@ -16,15 +36,116 @@ def asc_key
     UI.user_error!("App Store Connect key not found at #{path} - run: make install-key SRC=<path to .p8>")
   end
 
-  app_store_connect_api_key(key_id: key_id, issuer_id: issuer_id, key_filepath: path)
+  { key_id: key_id, issuer_id: issuer_id, filepath: path }
+end
+
+def asc_key
+  credentials = asc_credentials
+  app_store_connect_api_key(
+    key_id: credentials[:key_id],
+    issuer_id: credentials[:issuer_id],
+    key_filepath: credentials[:filepath]
+  )
+end
+
+def asc_app
+  asc_key
+  app = Spaceship::ConnectAPI::App.find(app_identifier)
+  UI.user_error!("No app record for #{app_identifier} - run: make create-app") if app.nil?
+  app
+end
+
+# Pricing and availability live only on the public App Store Connect API;
+# spaceship's own clients proxy through iris and developer.apple.com, which
+# do not serve those resources. The token is not auto-refreshed, and a
+# release run outlives its 20-minute lifetime.
+def asc_token
+  @asc_token ||= Spaceship::ConnectAPI::Token.create(**asc_credentials)
+  @asc_token.refresh! if @asc_token.expired?
+  @asc_token
+end
+
+# `allow_missing` returns nil for a 404 where absence is a real answer, such
+# as an app that has no price schedule yet. Every other failure raises.
+def asc_api(method, path, params: nil, body: nil, allow_missing: false)
+  require "net/http"
+  require "json"
+
+  uri = URI("https://api.appstoreconnect.apple.com/#{path}")
+  uri.query = URI.encode_www_form(params) if params
+
+  request = Net::HTTP.const_get(method).new(uri)
+  request["Authorization"] = "Bearer #{asc_token.text}"
+  unless body.nil?
+    request["Content-Type"] = "application/json"
+    request.body = body.to_json
+  end
+
+  response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) { |http| http.request(request) }
+  parsed = response.body.to_s.empty? ? {} : JSON.parse(response.body)
+
+  return nil if allow_missing && response.code == "404"
+
+  unless response.is_a?(Net::HTTPSuccess)
+    details = (parsed["errors"] || []).map { |e| [e["code"], e["detail"] || e["title"]].compact.join(" - ") }
+    details = [response.message] if details.empty?
+    UI.user_error!("#{method} /#{path} failed (#{response.code}): #{details.join("; ")}")
+  end
+
+  parsed
 end
 
 def build_number
   ENV["BUILD_NUMBER"].to_s.empty? ? Time.now.strftime("%Y.%-j.%-H") : ENV["BUILD_NUMBER"]
 end
 
+# -allowProvisioningUpdates needs either a developer account signed in to
+# Xcode or these three flags, and `build_app` is the one action here that
+# takes no api_key - so the key from .env is handed to xcodebuild itself.
 def xcargs
-  "CURRENT_PROJECT_VERSION=#{build_number} -allowProvisioningUpdates"
+  require "shellwords"
+  credentials = asc_credentials
+
+  [
+    "CURRENT_PROJECT_VERSION=#{build_number}",
+    "-allowProvisioningUpdates",
+    "-authenticationKeyPath", credentials[:filepath].shellescape,
+    "-authenticationKeyID", credentials[:key_id].shellescape,
+    "-authenticationKeyIssuerID", credentials[:issuer_id].shellescape
+  ].join(" ")
+end
+
+def build_ios_release
+  build_app(
+    scheme: IOS_SCHEME,
+    configuration: "Release",
+    export_method: "app-store",
+    output_directory: ".build",
+    xcargs: xcargs
+  )
+end
+
+def build_mac_release
+  # Both of these fail late otherwise - after a full release archive.
+  #
+  # The Mac App Store rejects unsandboxed apps.
+  unless File.read("../Hushaboom.xcodeproj/project.pbxproj").include?("CODE_SIGN_ENTITLEMENTS")
+    UI.user_error!("The macOS target has no entitlements file; the Mac App Store requires com.apple.security.app-sandbox")
+  end
+
+  # Exporting a .pkg needs a Mac Installer Distribution certificate, and
+  # Xcode's automatic signing never creates that one.
+  unless sh("security", "find-identity", "-v", log: false).include?("3rd Party Mac Developer Installer")
+    UI.user_error!("No Mac Installer Distribution certificate in the keychain - run: make certs")
+  end
+
+  build_mac_app(
+    scheme: MAC_SCHEME,
+    configuration: "Release",
+    export_method: "app-store",
+    output_directory: ".build",
+    xcargs: xcargs
+  )
 end
 
 # Registers the bundle ID, which is permanent once created.
@@ -35,7 +156,7 @@ end
 # left to do by hand.
 lane :create_app do
   asc_key
-  identifier = "io.burns.hushaboom"
+  identifier = app_identifier
 
   if Spaceship::ConnectAPI::BundleId.all.find { |b| b.identifier == identifier }
     UI.success("Bundle ID #{identifier} is registered")
@@ -65,75 +186,163 @@ lane :create_app do
   end
 end
 
-# Pushes metadata and screenshots only - never the binary, which the beta
-# lanes handle. Universal purchase gives each platform its own App Store
-# version, and deliver targets one platform per run, so this uploads twice.
-lane :metadata do
-  push_metadata(platform: "ios", screenshots_path: "./fastlane/screenshots")
-  push_metadata(platform: "osx", screenshots_path: "./fastlane/screenshots-mac")
+# The Mac App Store needs a .pkg signed with a Mac Installer Distribution
+# certificate. Xcode's automatic signing creates everything else.
+lane :certs do
+  cert(
+    api_key: asc_key,
+    platform: "macos",
+    type: "mac_installer_distribution",
+    output_path: ".build"
+  )
 end
 
-private_lane :push_metadata do |options|
-  upload_to_app_store(
+# A version cannot be submitted until the app has a price schedule and a
+# territory list, and deliver's `price_tier` still calls the `prices`
+# relationship Apple removed with the 2023 pricing API.
+#
+# Hushaboom is free, which is the zero-cost price point. Its id embeds the
+# app id, so it has to be looked up rather than written down.
+lane :pricing do
+  app_id = asc_app.id
+
+  points = asc_api(:Get, "v1/apps/#{app_id}/appPricePoints",
+                   params: { "filter[territory]" => BASE_TERRITORY, "limit" => 200 })
+  free = points["data"].find { |point| point.dig("attributes", "customerPrice").to_f.zero? }
+  UI.user_error!("No zero-cost price point in #{BASE_TERRITORY} - is the app already paid?") if free.nil?
+
+  # POST replaces the whole schedule, so this is safe to rerun.
+  asc_api(:Post, "v1/appPriceSchedules", body: {
+    data: {
+      type: "appPriceSchedules",
+      relationships: {
+        app: { data: { type: "apps", id: app_id } },
+        baseTerritory: { data: { type: "territories", id: BASE_TERRITORY } },
+        manualPrices: { data: [{ type: "appPrices", id: "${free}" }] }
+      }
+    },
+    included: [{
+      id: "${free}",
+      type: "appPrices",
+      attributes: { startDate: nil, endDate: nil },
+      relationships: { appPricePoint: { data: { type: "appPricePoints", id: free["id"] } } }
+    }]
+  })
+  UI.success("Price schedule set to free, based on #{BASE_TERRITORY}")
+
+  listed = asc_api(:Get, "v1/territories", params: { "limit" => 200 })
+  territories = listed["data"].map { |territory| territory["id"] }
+  total = listed.dig("meta", "paging", "total")
+  if total && total > territories.count
+    UI.user_error!("Fetched #{territories.count} of #{total} territories - raise the page limit")
+  end
+
+  asc_api(:Post, "v2/appAvailabilities", body: {
+    data: {
+      type: "appAvailabilities",
+      attributes: { availableInNewTerritories: true },
+      relationships: {
+        app: { data: { type: "apps", id: app_id } },
+        territoryAvailabilities: {
+          data: territories.map { |id| { type: "territoryAvailabilities", id: "${#{id}}" } }
+        }
+      }
+    },
+    included: territories.map do |id|
+      {
+        id: "${#{id}}",
+        type: "territoryAvailabilities",
+        attributes: { available: true },
+        relationships: { territory: { data: { type: "territories", id: id } } }
+      }
+    end
+  })
+  UI.success("Available in all #{territories.count} territories, and in new ones as Apple adds them")
+end
+
+# Submission fails on a missing price schedule, but only after the binary has
+# been uploaded - so spend the check, not the archive.
+def check_submittable
+  UI.user_error!("The app has no price schedule - run: make pricing") if
+    asc_api(:Get, "v1/apps/#{asc_app.id}/appPriceSchedule", allow_missing: true).nil?
+end
+
+# Pushes metadata and screenshots only - never the binary.
+lane :metadata do
+  deliver_to_app_store(platform: "ios", screenshots_path: IOS_SCREENSHOTS)
+  deliver_to_app_store(platform: "osx", screenshots_path: MAC_SCREENSHOTS)
+end
+
+# Universal purchase gives each platform its own App Store version, and
+# deliver targets one platform per run, so every caller runs this twice.
+#
+# Passing a binary turns a metadata push into a submission: the build is
+# uploaded, attached to the version, and sent to review.
+private_lane :deliver_to_app_store do |options|
+  binary = { ipa: options[:ipa], pkg: options[:pkg] }.compact
+  submitting = !binary.empty?
+
+  upload_to_app_store({
     api_key: asc_key,
     platform: options[:platform],
     screenshots_path: options[:screenshots_path],
-    skip_binary_upload: true,
+    app_rating_config_path: RATING_CONFIG,
+    skip_binary_upload: !submitting,
     skip_app_version_update: false,
     overwrite_screenshots: true,
-    submit_for_review: false,
+    submit_for_review: submitting,
+    submission_information: SUBMISSION_INFORMATION,
+    automatic_release: true,
     precheck_include_in_app_purchases: false,
     force: true
-  )
+  }.merge(binary))
 end
 
 platform :ios do
   # Screenshots run from their own test plan, so `xcodebuild test` on the app
   # scheme stays simulator-free.
   lane :screenshots do |options|
-    snapshot(output_directory: options[:output_directory] || "./fastlane/screenshots")
+    snapshot(output_directory: options[:output_directory] || IOS_SCREENSHOTS)
   end
 
   lane :beta do
     api_key = asc_key
-    build_app(
-      scheme: "Hushaboom-iOS",
-      configuration: "Release",
-      export_method: "app-store",
-      output_directory: ".build",
-      xcargs: xcargs,
-      api_key: api_key
-    )
+    build_ios_release
     upload_to_testflight(
       api_key: api_key,
       skip_waiting_for_build_processing: true
+    )
+  end
+
+  lane :release do
+    check_submittable
+    build_ios_release
+    deliver_to_app_store(
+      platform: "ios",
+      screenshots_path: IOS_SCREENSHOTS,
+      ipa: lane_context[SharedValues::IPA_OUTPUT_PATH]
     )
   end
 end
 
 platform :mac do
   lane :beta do
-    # The Mac App Store rejects unsandboxed apps, and an unsandboxed upload
-    # fails late, after a full release archive - so check before building.
-    unless File.read("../Hushaboom.xcodeproj/project.pbxproj").include?("CODE_SIGN_ENTITLEMENTS")
-      UI.user_error!("The macOS target has no entitlements file; the Mac App Store requires com.apple.security.app-sandbox")
-    end
-
     api_key = asc_key
-    # Exporting a .pkg needs a "3rd Party Mac Developer Installer" certificate
-    # in the keychain; Xcode does not create that one automatically.
-    build_mac_app(
-      scheme: "Hushaboom-macOS",
-      configuration: "Release",
-      export_method: "app-store",
-      output_directory: ".build",
-      xcargs: xcargs,
-      api_key: api_key
-    )
+    build_mac_release
     upload_to_testflight(
       api_key: api_key,
       app_platform: "osx",
       skip_waiting_for_build_processing: true
+    )
+  end
+
+  lane :release do
+    check_submittable
+    build_mac_release
+    deliver_to_app_store(
+      platform: "osx",
+      screenshots_path: MAC_SCREENSHOTS,
+      pkg: lane_context[SharedValues::PKG_OUTPUT_PATH]
     )
   end
 end

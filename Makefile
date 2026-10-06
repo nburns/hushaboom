@@ -19,7 +19,8 @@ MAC_SHOTS_DIR := fastlane/screenshots-mac/en-US
 ASC_KEY_PATH  ?= $(HOME)/.appstoreconnect/private_keys/AuthKey_$(ASC_KEY_ID).p8
 
 .PHONY: help setup install-key generate build build-ios test run run-simulator run-ios \
-        logs-ios archive-ios archive-mac beta beta-ios beta-mac screenshots screenshots-ios screenshots-mac create-app metadata icon clean
+        logs-ios archive-ios archive-mac beta beta-ios beta-mac release release-ios release-mac \
+        screenshots screenshots-ios screenshots-mac create-app certs pricing metadata icon clean
 
 help:
 	@echo "Targets:"
@@ -38,11 +39,16 @@ help:
 	@echo "  beta            Upload both platforms to TestFlight"
 	@echo "  beta-ios        Upload the iOS build to TestFlight"
 	@echo "  beta-mac        Upload the macOS build to TestFlight"
+	@echo "  release         Submit both platforms to App Review"
+	@echo "  release-ios     Submit the iOS build to App Review"
+	@echo "  release-mac     Submit the macOS build to App Review"
 	@echo "  screenshots     Capture all App Store screenshots (iOS + macOS)"
 	@echo "  screenshots-ios Capture iPhone and iPad screenshots (fastlane snapshot)"
 	@echo "  screenshots-mac Capture macOS screenshots (XCUITest + result bundle)"
 	@echo "  create-app      Create the App Store Connect record (one time)"
-	@echo "  metadata        Upload metadata and screenshots (no binary)"
+	@echo "  certs           Create the Mac Installer Distribution certificate (one time)"
+	@echo "  pricing         Set the price schedule and territory availability"
+	@echo "  metadata        Upload metadata, screenshots, and the age rating (no binary)"
 	@echo "  icon            Regenerate Design/icon/ from Design/generate-icon.py"
 	@echo "  clean           Remove $(BUILD_DIR)"
 
@@ -122,6 +128,16 @@ beta-ios:
 beta-mac:
 	BUILD_NUMBER="$(BUILD_NUMBER)" bundle exec fastlane mac beta
 
+# Each platform has its own App Store version under universal purchase, so
+# each is built, uploaded, and submitted on its own.
+release: release-ios release-mac
+
+release-ios:
+	BUILD_NUMBER="$(BUILD_NUMBER)" bundle exec fastlane ios release
+
+release-mac:
+	BUILD_NUMBER="$(BUILD_NUMBER)" bundle exec fastlane mac release
+
 screenshots: screenshots-ios screenshots-mac
 
 # Both platforms capture into a staging directory and only replace the
@@ -154,6 +170,12 @@ screenshots-mac:
 
 create-app:
 	bundle exec fastlane create_app
+
+certs:
+	bundle exec fastlane certs
+
+pricing:
+	bundle exec fastlane pricing
 
 metadata:
 	bundle exec fastlane metadata

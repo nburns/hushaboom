@@ -80,12 +80,52 @@ always increases without any state to track.
 make install-key SRC=~/Downloads/AuthKey_XXXXXXXXX.p8   # one time
 make archive-ios    # or archive-mac, for a local release archive
 make beta           # build and upload both platforms to TestFlight
+make release        # build, upload, and submit both platforms to App Review
 ```
 
 Credentials live in `.env` (gitignored; see `.env.example`) - the App Store
 Connect key id, issuer id, and the path to the `.p8`. The key is shared across
 every app on the team, so it lives at
 `~/.appstoreconnect/private_keys/` rather than inside this repo.
+
+### Submitting
+
+One time, in this order:
+
+```sh
+make create-app   # register the bundle ID, then the manual step it prints
+make certs        # Mac Installer Distribution cert, to sign the .pkg
+make pricing      # free, based on USA, every territory plus new ones
+make metadata     # description, screenshots, age rating, review contact
+```
+
+`make certs` is only for macOS: the Mac App Store takes a `.pkg` signed by a
+Mac Installer Distribution certificate, and that is the one certificate
+Xcode's automatic signing never creates. `make release-mac` checks for it
+before archiving rather than failing at the export.
+
+Then per release, `make screenshots && make release`. Universal purchase gives
+each platform its own App Store version and `deliver` targets one platform per
+run, so iOS and macOS build, upload, attach their build, and submit
+separately. Both release automatically once approved.
+
+Two parts of a submission have no API at all and have to be done on the
+website:
+
+- **The app record.** `apps` is GET and UPDATE only, and `produce` falls back
+  to an endpoint that wants an interactive Apple ID login, so
+  `make create-app` registers the bundle ID and prints the form to fill in.
+- **App Privacy.** Not on the public API, nor on the one spaceship proxies.
+  Hushaboom collects nothing, so this is "Data Not Collected" - but a
+  submission is rejected until it has been answered and published once.
+
+Everything else is in the repo. Age rating lives in
+`fastlane/rating_config.json`; export compliance and content rights are in the
+Fastfile's `SUBMISSION_INFORMATION`, matching the
+`ITSAppUsesNonExemptEncryption: false` both `Info-*.plist` files declare to
+App Review. `make pricing` posts an `appPriceSchedule` by hand because
+`deliver`'s `price_tier` still calls the `prices` relationship Apple removed
+with the 2023 pricing API.
 
 ## Website
 

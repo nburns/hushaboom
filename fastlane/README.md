@@ -21,6 +21,22 @@ For _fastlane_ installation instructions, see [Installing _fastlane_](https://do
 
 
 
+### certs
+
+```sh
+[bundle exec] fastlane certs
+```
+
+
+
+### pricing
+
+```sh
+[bundle exec] fastlane pricing
+```
+
+
+
 ### metadata
 
 ```sh
@@ -50,6 +66,14 @@ For _fastlane_ installation instructions, see [Installing _fastlane_](https://do
 
 
 
+### ios release
+
+```sh
+[bundle exec] fastlane ios release
+```
+
+
+
 ----
 
 
@@ -59,6 +83,14 @@ For _fastlane_ installation instructions, see [Installing _fastlane_](https://do
 
 ```sh
 [bundle exec] fastlane mac beta
+```
+
+
+
+### mac release
+
+```sh
+[bundle exec] fastlane mac release
 ```
 
 
