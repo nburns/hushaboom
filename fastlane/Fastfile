@@ -276,11 +276,13 @@ end
 # Universal purchase gives each platform its own App Store version, and
 # deliver targets one platform per run, so every caller runs this twice.
 #
-# Passing a binary turns a metadata push into a submission: the build is
-# uploaded, attached to the version, and sent to review.
+# A binary means upload it, attach it, and submit. `submit` without one
+# submits whatever build is already attached, for when a submission failed
+# on something other than the build - there is no reason to spend another
+# half-hour of processing on an identical binary.
 private_lane :deliver_to_app_store do |options|
   binary = { ipa: options[:ipa], pkg: options[:pkg] }.compact
-  submitting = !binary.empty?
+  submitting = options[:submit] || !binary.empty?
 
   upload_to_app_store({
     api_key: asc_key,
@@ -323,6 +325,11 @@ platform :ios do
       ipa: lane_context[SharedValues::IPA_OUTPUT_PATH]
     )
   end
+
+  lane :submit do
+    check_submittable
+    deliver_to_app_store(platform: "ios", screenshots_path: IOS_SCREENSHOTS, submit: true)
+  end
 end
 
 platform :mac do
@@ -344,5 +351,10 @@ platform :mac do
       screenshots_path: MAC_SCREENSHOTS,
       pkg: lane_context[SharedValues::PKG_OUTPUT_PATH]
     )
+  end
+
+  lane :submit do
+    check_submittable
+    deliver_to_app_store(platform: "osx", screenshots_path: MAC_SCREENSHOTS, submit: true)
   end
 end

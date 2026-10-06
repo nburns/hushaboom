@@ -20,7 +20,7 @@ ASC_KEY_PATH  ?= $(HOME)/.appstoreconnect/private_keys/AuthKey_$(ASC_KEY_ID).p8
 
 .PHONY: help setup install-key generate build build-ios test run run-simulator run-ios \
         logs-ios archive-ios archive-mac beta beta-ios beta-mac release release-ios release-mac \
-        screenshots screenshots-ios screenshots-mac create-app certs pricing metadata icon clean
+        submit submit-ios submit-mac screenshots screenshots-ios screenshots-mac create-app certs pricing metadata icon clean
 
 help:
 	@echo "Targets:"
@@ -42,6 +42,9 @@ help:
 	@echo "  release         Submit both platforms to App Review"
 	@echo "  release-ios     Submit the iOS build to App Review"
 	@echo "  release-mac     Submit the macOS build to App Review"
+	@echo "  submit          Submit the already-attached builds, without rebuilding"
+	@echo "  submit-ios      Submit the attached iOS build, without rebuilding"
+	@echo "  submit-mac      Submit the attached macOS build, without rebuilding"
 	@echo "  screenshots     Capture all App Store screenshots (iOS + macOS)"
 	@echo "  screenshots-ios Capture iPhone and iPad screenshots (fastlane snapshot)"
 	@echo "  screenshots-mac Capture macOS screenshots (XCUITest + result bundle)"
@@ -137,6 +140,15 @@ release-ios:
 
 release-mac:
 	BUILD_NUMBER="$(BUILD_NUMBER)" bundle exec fastlane mac release
+
+# For when a submission failed on a declaration rather than on the build.
+submit: submit-ios submit-mac
+
+submit-ios:
+	bundle exec fastlane ios submit
+
+submit-mac:
+	bundle exec fastlane mac submit
 
 screenshots: screenshots-ios screenshots-mac
 

@@ -109,7 +109,7 @@ each platform its own App Store version and `deliver` targets one platform per
 run, so iOS and macOS build, upload, attach their build, and submit
 separately. Both release automatically once approved.
 
-Two parts of a submission have no API at all and have to be done on the
+Three parts of a submission have no API at all and have to be done on the
 website:
 
 - **The app record.** `apps` is GET and UPDATE only, and `produce` falls back
@@ -118,6 +118,16 @@ website:
 - **App Privacy.** Not on the public API, nor on the one spaceship proxies.
   Hushaboom collects nothing, so this is "Data Not Collected" - but a
   submission is rejected until it has been answered and published once.
+- **The regulated medical device declaration**, under App Information.
+  `appInfos` has no field or relationship for it. Submission fails with
+  `CANNOT_SUBMIT_MISSING_REGULATED_MEDICAL_DEVICE_APP_DECLARATION`, and
+  fastlane reports only "not in valid state" - the real reason is in the
+  `meta.associatedErrors` of the failed `reviewSubmissionItems` POST.
+
+A submission that fails on one of those still leaves its build uploaded and
+attached, so `make submit` finishes the job once the declaration is answered,
+rather than spending another half-hour of build processing on an identical
+binary.
 
 Everything else is in the repo. Age rating lives in
 `fastlane/rating_config.json`; export compliance and content rights are in the
