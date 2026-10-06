@@ -115,6 +115,8 @@ def xcargs
   ].join(" ")
 end
 
+# Returns the artifact path. A release lane that passed a nil one on would
+# look like a metadata push that quietly skipped the submission.
 def build_ios_release
   build_app(
     scheme: IOS_SCHEME,
@@ -123,6 +125,9 @@ def build_ios_release
     output_directory: ".build",
     xcargs: xcargs
   )
+
+  lane_context[SharedValues::IPA_OUTPUT_PATH] ||
+    UI.user_error!("build_app exported no .ipa")
 end
 
 def build_mac_release
@@ -146,6 +151,9 @@ def build_mac_release
     output_directory: ".build",
     xcargs: xcargs
   )
+
+  lane_context[SharedValues::PKG_OUTPUT_PATH] ||
+    UI.user_error!("build_mac_app exported no .pkg; the Mac App Store takes an installer, not an .app")
 end
 
 # Registers the bundle ID, which is permanent once created.
@@ -318,11 +326,10 @@ platform :ios do
 
   lane :release do
     check_submittable
-    build_ios_release
     deliver_to_app_store(
       platform: "ios",
       screenshots_path: IOS_SCREENSHOTS,
-      ipa: lane_context[SharedValues::IPA_OUTPUT_PATH]
+      ipa: build_ios_release
     )
   end
 
@@ -345,11 +352,10 @@ platform :mac do
 
   lane :release do
     check_submittable
-    build_mac_release
     deliver_to_app_store(
       platform: "osx",
       screenshots_path: MAC_SCREENSHOTS,
-      pkg: lane_context[SharedValues::PKG_OUTPUT_PATH]
+      pkg: build_mac_release
     )
   end
 
