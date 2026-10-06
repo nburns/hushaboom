@@ -6,4 +6,4 @@ Each sound has its own level and its own controls. Set a sleep timer and it stop
 
 No ads. No tracking. No account. No network code at all.
 
-One purchase covers iPhone, iPad, and Mac.
+Runs on iPhone, iPad, and Mac.
