@@ -276,8 +276,19 @@ def check_submittable
 end
 
 # Pushes metadata and screenshots only - never the binary.
+#
+# Split per platform because a version that is in review has no editable
+# metadata, and one platform can be in review while the other is not.
 lane :metadata do
+  metadata_ios
+  metadata_mac
+end
+
+lane :metadata_ios do
   deliver_to_app_store(platform: "ios", screenshots_path: IOS_SCREENSHOTS)
+end
+
+lane :metadata_mac do
   deliver_to_app_store(platform: "osx", screenshots_path: MAC_SCREENSHOTS)
 end
 

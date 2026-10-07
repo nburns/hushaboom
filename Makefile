@@ -20,7 +20,7 @@ ASC_KEY_PATH  ?= $(HOME)/.appstoreconnect/private_keys/AuthKey_$(ASC_KEY_ID).p8
 
 .PHONY: help setup install-key generate build build-ios test run run-simulator run-ios \
         logs-ios archive-ios archive-mac beta beta-ios beta-mac release release-ios release-mac \
-        submit submit-ios submit-mac screenshots screenshots-ios screenshots-mac create-app certs pricing metadata icon clean
+        submit submit-ios submit-mac screenshots screenshots-ios screenshots-mac create-app certs pricing metadata metadata-ios metadata-mac icon clean
 
 help:
 	@echo "Targets:"
@@ -52,6 +52,8 @@ help:
 	@echo "  certs           Create the Mac Installer Distribution certificate (one time)"
 	@echo "  pricing         Set the price schedule and territory availability"
 	@echo "  metadata        Upload metadata, screenshots, and the age rating (no binary)"
+	@echo "  metadata-ios    Upload iOS metadata only"
+	@echo "  metadata-mac    Upload macOS metadata only"
 	@echo "  icon            Regenerate Design/icon/ from Design/generate-icon.py"
 	@echo "  clean           Remove $(BUILD_DIR)"
 
@@ -191,6 +193,14 @@ pricing:
 
 metadata:
 	bundle exec fastlane metadata
+
+# A version that is in review has no editable metadata, so each platform can
+# be pushed on its own.
+metadata-ios:
+	bundle exec fastlane metadata_ios
+
+metadata-mac:
+	bundle exec fastlane metadata_mac
 
 icon:
 	python3 Design/generate-icon.py
