@@ -195,7 +195,10 @@ struct ContentView: View {
                 ("Period", $model.oceanWavePeriod),
                 ("Variation", $model.oceanWaveVariation),
                 ("Height", $model.oceanWaveHeight),
-                ("Tone", $model.oceanTone),
+                ("Surge", $model.oceanSurge),
+                ("Body", $model.oceanBody),
+                ("Wash", $model.oceanWash),
+                ("Spray", $model.oceanSpray),
             ]
         case .wind:
             return [

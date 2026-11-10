@@ -23,6 +23,10 @@ through `NoisePlayer`.
   of truth, not the SVGs), and `icon/` (import-ready layered SVGs).
 - `Hushaboom.icon` - Icon Composer document; both app targets reference it by
   name. Regenerate its source layers with `Design/generate-icon.py`.
+- `Scripts/` - offline tools: `oceanmatch/` renders the ocean generator to a
+  WAV and `ocean_match.py` scores it against `reference/ocean-apple.json`
+  (measurements only - no reference audio is redistributed), plus
+  `ocean_reference.py` to re-derive those targets from a new capture.
 - `website/` - [Middleman](https://middlemanapp.com) site for
   hushaboom.burns.io (the App Store support and privacy-policy URLs).
   GitHub Actions builds and deploys it; the build output is not committed.
@@ -41,6 +45,7 @@ make run           # build and launch on macOS
 make run-simulator # build, install, and launch on IOS_SIMULATOR
 make run-ios       # build, install, and launch on IOS_DEVICE
 make test          # NoiseKit suite (~5 min; the spectral tests are slow)
+make ocean-match   # score the ocean generator against the reference
 ```
 
 `Hushaboom.xcodeproj` is generated from `project.yml` and is not checked in;
@@ -128,6 +133,13 @@ A submission that fails on one of those still leaves its build uploaded and
 attached, so `make submit` finishes the job once the declaration is answered,
 rather than spending another half-hour of build processing on an identical
 binary.
+
+The same goes for a rejection. Reply in App Store Connect, then `make submit`
+sends the attached build back with the current metadata. A rejected submission
+stays in `UNRESOLVED_ISSUES`, which `deliver` counts as a submission already in
+progress, so the submit lanes cancel it first and wait for App Store Connect to
+finish cancelling. Only that state is ever cancelled - a submission waiting or
+in review is left alone.
 
 Everything else is in the repo. Age rating lives in
 `fastlane/rating_config.json`; export compliance and content rights are in the

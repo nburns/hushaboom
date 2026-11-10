@@ -59,35 +59,46 @@ final class GeneratorTests: XCTestCase {
         XCTAssertEqual(mean, 0, accuracy: 0.01, "ocean should have zero DC offset")
         XCTAssertGreaterThan(rms, 0.07, "ocean RMS \(rms) too quiet")
         XCTAssertLessThan(rms, 0.19, "ocean RMS \(rms) too loud")
+    }
 
-        let chunkSize = 44_100
-        let chunkRMS = stride(from: 0, to: s.count, by: chunkSize).map { start -> Float in
-            let chunk = s[start..<min(start + chunkSize, s.count)]
-            return (chunk.reduce(0) { $0 + $1 * $1 } / Float(chunk.count)).squareRoot()
-        }
-        let quietest = chunkRMS.min() ?? 0
-        let loudest = chunkRMS.max() ?? 0
-        XCTAssertGreaterThan(quietest, 0, "bed level should keep surf audible between waves")
-        XCTAssertGreaterThan(loudest, quietest * 2, "waves should visibly swell over the bed")
+    /// The swell has to be deep enough to hear and shallow enough that the
+    /// wave stops being an event you can count. The reference swings 2.0x
+    /// between its quietest and loudest second; the bounds either side of
+    /// that are what keep this honest in both directions.
+    func testOceanSwellsLikeTheReference() {
+        var generator = OceanNoiseGenerator(seed: 21)
+        let swing = chunkRMSSwing(&generator, seconds: 120)
+        XCTAssertGreaterThan(swing.quietest, 0, "the bed should keep surf audible between waves")
+        let ratio = swing.loudest / swing.quietest
+        XCTAssertGreaterThan(ratio, 1.6, "swell ratio \(ratio) - waves barely rise above the bed")
+        XCTAssertLessThan(ratio, 3.2, "swell ratio \(ratio) - every wave lands as a countable event")
     }
 
     func testOceanStaysBoundedAcrossMacroCorners() {
-        var corners: [(Float, Float, Float, Float)] = [(0.5, 0.5, 0.5, 0.5)]
-        for p: Float in [0, 1] {
-            for h: Float in [0, 1] {
-                for t: Float in [0, 1] {
-                    for v: Float in [0, 1] {
-                        corners.append((p, h, t, v))
-                    }
-                }
+        // Seven macros will not sweep cartesian at two million samples each.
+        // Centre, then each macro alone at both ends, then all-min and
+        // all-max, where the layer balance has to work hardest.
+        let names = ["period", "height", "variation", "surge", "body", "wash", "spray"]
+        var corners: [(label: String, macros: [Float])] = [("centre", Array(repeating: 0.5, count: names.count))]
+        for index in names.indices {
+            for value in [Float(0), 1] {
+                var macros = [Float](repeating: 0.5, count: names.count)
+                macros[index] = value
+                corners.append(("\(names[index]):\(value)", macros))
             }
         }
-        for (period, height, tone, variation) in corners {
+        corners.append(("all-min", Array(repeating: 0, count: names.count)))
+        corners.append(("all-max", Array(repeating: 1, count: names.count)))
+
+        for (label, macros) in corners {
             let params = OceanParameters(
-                wavePeriod: period,
-                waveHeight: height,
-                tone: tone,
-                waveVariation: variation
+                wavePeriod: macros[0],
+                waveHeight: macros[1],
+                waveVariation: macros[2],
+                surge: macros[3],
+                body: macros[4],
+                wash: macros[5],
+                spray: macros[6]
             )
             var generator = OceanNoiseGenerator(seed: 99, parameters: params)
             var sumSquares: Float = 0
@@ -98,22 +109,52 @@ final class GeneratorTests: XCTestCase {
                 peak = max(peak, abs(s))
             }
             let rms = (sumSquares / 2_000_000).squareRoot()
-            let label = "ocean(period:\(period) height:\(height) tone:\(tone) variation:\(variation))"
-            XCTAssertLessThanOrEqual(peak, 1.0, "\(label) peak \(peak)")
-            XCTAssertGreaterThan(rms, 0.04, "\(label) RMS \(rms) too quiet")
-            XCTAssertLessThan(rms, 0.22, "\(label) RMS \(rms) too loud")
+            XCTAssertLessThanOrEqual(peak, 1.0, "ocean(\(label)) peak \(peak)")
+            if params.surge == 0 && params.body == 0 && params.wash == 0 && params.spray == 0 {
+                // Every layer off is silence, which is the honest answer
+                XCTAssertEqual(rms, 0, accuracy: 1e-6, "ocean(\(label)) should be silent")
+            } else {
+                XCTAssertGreaterThan(rms, 0.04, "ocean(\(label)) RMS \(rms) too quiet")
+                XCTAssertLessThan(rms, 0.22, "ocean(\(label)) RMS \(rms) too loud")
+            }
+        }
+    }
+
+    /// The four layer sliders are a balance, not four volumes: any setting
+    /// where they share a common scale has to land at the same loudness.
+    func testOceanLayerSlidersHoldLoudness() {
+        func rms(_ level: Float) -> Float {
+            var generator = OceanNoiseGenerator(seed: 5, parameters: OceanParameters(
+                wavePeriod: 0.5, waveHeight: 0.5, waveVariation: 0.5,
+                surge: level, body: level, wash: level, spray: level
+            ))
+            var sumSquares: Float = 0
+            for _ in 0..<1_000_000 {
+                let s = generator.nextSample()
+                sumSquares += s * s
+            }
+            return (sumSquares / 1_000_000).squareRoot()
+        }
+        let reference = rms(0.5)
+        for level: Float in [0.25, 0.75, 1] {
+            XCTAssertEqual(
+                rms(level), reference, accuracy: reference * 0.1,
+                "layers at \(level) should sit at the same loudness as the reference balance"
+            )
         }
     }
 
     func testOceanMacroMidpointMatchesDefaults() {
-        let macro = OceanParameters(wavePeriod: 0.5, waveHeight: 0.5, tone: 0.5, waveVariation: 0.5)
+        let macro = OceanParameters(wavePeriod: 0.5, waveHeight: 0.5, waveVariation: 0.5)
         let defaults = OceanParameters()
         XCTAssertEqual(macro.bedLevel, defaults.bedLevel, accuracy: 0.01)
         XCTAssertEqual(macro.waveDepth, defaults.waveDepth, accuracy: 0.01)
         XCTAssertEqual(macro.waveSeconds, defaults.waveSeconds, accuracy: 1.0)
         XCTAssertEqual(macro.waveSecondsVariation, defaults.waveSecondsVariation, accuracy: 0.01)
-        XCTAssertEqual(macro.carrierMix, defaults.carrierMix, accuracy: 0.01)
-        XCTAssertEqual(macro.crashBrightness, defaults.crashBrightness, accuracy: 0.01)
+        XCTAssertEqual(macro.surge, defaults.surge, accuracy: 0.01)
+        XCTAssertEqual(macro.body, defaults.body, accuracy: 0.01)
+        XCTAssertEqual(macro.wash, defaults.wash, accuracy: 0.01)
+        XCTAssertEqual(macro.spray, defaults.spray, accuracy: 0.01)
     }
 
     func testOceanWaveLengthsClusterAroundTheSetting() {

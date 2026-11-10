@@ -131,6 +131,34 @@ final class NatureTests: XCTestCase {
         XCTAssertLessThan(top, topLimit, "\(label) top-octave/low-mid \(top) - sounds sizzly")
     }
 
+    /// Surf is a low, band-limited sound. The reference measures a
+    /// presence/low-mid ratio of 0.032 and essentially nothing in the top
+    /// octaves; drifting bright here is what turns water back into hiss.
+    func testOceanEnergySitsLow() {
+        assertSpreadEnergy(
+            of: OceanNoiseGenerator(seed: 11),
+            label: "ocean",
+            presenceRange: 0.015...0.070,
+            topLimit: 0.0005
+        )
+    }
+
+    /// Each layer slider has to move its own band and leave the others alone,
+    /// otherwise they are four names for one tone control.
+    func testOceanLayersMoveTheirOwnBand() {
+        guard let quiet = bands(of: OceanNoiseGenerator(seed: 11, parameters: OceanParameters(
+            wavePeriod: 0.5, waveHeight: 0.5, waveVariation: 0.5, spray: 0
+        ))),
+            let loud = bands(of: OceanNoiseGenerator(seed: 11, parameters: OceanParameters(
+                wavePeriod: 0.5, waveHeight: 0.5, waveVariation: 0.5, spray: 1
+            )))
+        else { return }
+        XCTAssertGreaterThan(
+            loud.presence / loud.lowMid, (quiet.presence / quiet.lowMid) * 2,
+            "spray should lift the presence band well clear of where silencing it leaves it"
+        )
+    }
+
     func testRainSpreadsEnergyInsteadOfSpikingThePresenceBand() {
         for (intensity, surface) in macroCorners() {
             assertSpreadEnergy(
@@ -159,23 +187,6 @@ final class NatureTests: XCTestCase {
                 )
             }
         }
-    }
-
-    private func chunkRMSSwing(_ generator: inout some NoiseGenerator, seconds: Int) -> (quietest: Float, loudest: Float) {
-        let chunkSize = 44_100
-        var quietest = Float.greatestFiniteMagnitude
-        var loudest: Float = 0
-        for _ in 0..<seconds {
-            var sumSquares: Float = 0
-            for _ in 0..<chunkSize {
-                let s = generator.nextSample()
-                sumSquares += s * s
-            }
-            let rms = (sumSquares / Float(chunkSize)).squareRoot()
-            quietest = min(quietest, rms)
-            loudest = max(loudest, rms)
-        }
-        return (quietest, loudest)
     }
 
     func testWindGustsActuallyGust() {

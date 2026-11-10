@@ -18,7 +18,7 @@ SHOTS_DIR     := fastlane/screenshots/en-US
 MAC_SHOTS_DIR := fastlane/screenshots-mac/en-US
 ASC_KEY_PATH  ?= $(HOME)/.appstoreconnect/private_keys/AuthKey_$(ASC_KEY_ID).p8
 
-.PHONY: help setup install-key generate build build-ios test run run-simulator run-ios \
+.PHONY: help setup install-key generate build build-ios test ocean-match run run-simulator run-ios \
         logs-ios archive-ios archive-mac beta beta-ios beta-mac release release-ios release-mac \
         submit submit-ios submit-mac screenshots screenshots-ios screenshots-mac create-app certs pricing metadata metadata-ios metadata-mac icon clean
 
@@ -55,6 +55,7 @@ help:
 	@echo "  metadata-ios    Upload iOS metadata only"
 	@echo "  metadata-mac    Upload macOS metadata only"
 	@echo "  icon            Regenerate Design/icon/ from Design/generate-icon.py"
+	@echo "  ocean-match     Score the ocean generator against the reference"
 	@echo "  clean           Remove $(BUILD_DIR)"
 
 setup:
@@ -91,6 +92,12 @@ build-ios:
 
 test:
 	cd NoiseKit && swift test
+
+ocean-match:
+	cd Scripts/oceanmatch && swift build -c release
+	mkdir -p -- "$(BUILD_DIR)"
+	Scripts/oceanmatch/.build/release/oceanmatch --seconds 300 --out "$(CURDIR)/$(BUILD_DIR)/ocean.wav"
+	python3 Scripts/ocean_match.py "$(CURDIR)/$(BUILD_DIR)/ocean.wav"
 
 run: build
 	-killall Hushaboom 2>/dev/null

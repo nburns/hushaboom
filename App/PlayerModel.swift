@@ -11,7 +11,10 @@ final class PlayerModel: ObservableObject {
         static let oceanWavePeriod = "ocean.wavePeriod"
         static let oceanWaveVariation = "ocean.waveVariation"
         static let oceanWaveHeight = "ocean.waveHeight"
-        static let oceanTone = "ocean.tone"
+        static let oceanSurge = "ocean.surge"
+        static let oceanBody = "ocean.body"
+        static let oceanWash = "ocean.wash"
+        static let oceanSpray = "ocean.spray"
         static let windGustiness = "wind.gustiness"
         static let windTone = "wind.tone"
         static let rainIntensity = "rain.intensity"
@@ -67,10 +70,31 @@ final class PlayerModel: ObservableObject {
         }
     }
 
-    @Published var oceanTone: Double {
+    @Published var oceanSurge: Double {
         didSet {
             pushOceanParameters()
-            store.set(oceanTone, forKey: Keys.oceanTone)
+            store.set(oceanSurge, forKey: Keys.oceanSurge)
+        }
+    }
+
+    @Published var oceanBody: Double {
+        didSet {
+            pushOceanParameters()
+            store.set(oceanBody, forKey: Keys.oceanBody)
+        }
+    }
+
+    @Published var oceanWash: Double {
+        didSet {
+            pushOceanParameters()
+            store.set(oceanWash, forKey: Keys.oceanWash)
+        }
+    }
+
+    @Published var oceanSpray: Double {
+        didSet {
+            pushOceanParameters()
+            store.set(oceanSpray, forKey: Keys.oceanSpray)
         }
     }
 
@@ -173,7 +197,10 @@ final class PlayerModel: ObservableObject {
         oceanWavePeriod = restored(Keys.oceanWavePeriod, default: 0.5)
         oceanWaveVariation = restored(Keys.oceanWaveVariation, default: 0.5)
         oceanWaveHeight = restored(Keys.oceanWaveHeight, default: 0.5)
-        oceanTone = restored(Keys.oceanTone, default: 0.5)
+        oceanSurge = restored(Keys.oceanSurge, default: 0.5)
+        oceanBody = restored(Keys.oceanBody, default: 0.5)
+        oceanWash = restored(Keys.oceanWash, default: 0.5)
+        oceanSpray = restored(Keys.oceanSpray, default: 0.5)
         windGustiness = restored(Keys.windGustiness, default: 0.5)
         windTone = restored(Keys.windTone, default: 0.5)
         rainIntensity = restored(Keys.rainIntensity, default: 0.5)
@@ -286,8 +313,11 @@ final class PlayerModel: ObservableObject {
         player.oceanParameters = OceanParameters(
             wavePeriod: Float(oceanWavePeriod),
             waveHeight: Float(oceanWaveHeight),
-            tone: Float(oceanTone),
-            waveVariation: Float(oceanWaveVariation)
+            waveVariation: Float(oceanWaveVariation),
+            surge: Float(oceanSurge),
+            body: Float(oceanBody),
+            wash: Float(oceanWash),
+            spray: Float(oceanSpray)
         )
     }
 
