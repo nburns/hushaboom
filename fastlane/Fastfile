@@ -9,6 +9,9 @@ RATING_CONFIG = "./fastlane/rating_config.json"
 # Prices are set per territory relative to this one.
 BASE_TERRITORY = "USA"
 
+# deliver's platform names, as the App Store Connect API spells them.
+ASC_PLATFORM = { "ios" => "IOS", "osx" => "MAC_OS" }.freeze
+
 # The only two review declarations the API accepts from here; the rest of the
 # App Privacy questionnaire exists on the website only.
 SUBMISSION_INFORMATION = {
@@ -275,6 +278,41 @@ def check_submittable
     asc_api(:Get, "v1/apps/#{asc_app.id}/appPriceSchedule", allow_missing: true).nil?
 end
 
+# deliver refuses to submit while a review submission is in progress, and a
+# rejected one stays in UNRESOLVED_ISSUES until it is cancelled. Nothing in it
+# can be approved any more, so clear it rather than stopping to cancel by hand.
+# Only that state - cancelling one that is waiting or in review would pull a
+# live submission out of the queue.
+def clear_rejected_review_submission(platform)
+  asc_api(:Get, "v1/reviewSubmissions", params: {
+    "filter[app]" => asc_app.id,
+    "filter[platform]" => platform,
+    "filter[state]" => "UNRESOLVED_ISSUES"
+  })["data"].each do |submission|
+    id = submission["id"]
+    UI.important("Cancelling the rejected #{platform} review submission #{id}")
+    asc_api(:Patch, "v1/reviewSubmissions/#{id}", body: {
+      data: { type: "reviewSubmissions", id: id, attributes: { canceled: true } }
+    })
+    await_cancellation(id)
+  end
+end
+
+# Cancellation is asynchronous, and a submission still CANCELING blocks the
+# new one just as the rejected one did.
+def await_cancellation(id)
+  30.times do
+    state = asc_api(:Get, "v1/reviewSubmissions/#{id}").dig("data", "attributes", "state")
+    unless state == "CANCELING"
+      UI.success("Rejected submission #{id} cleared (#{state})")
+      return
+    end
+
+    sleep(10)
+  end
+  UI.user_error!("Review submission #{id} is still cancelling - rerun once App Store Connect finishes")
+end
+
 # Pushes metadata and screenshots only - never the binary.
 #
 # Split per platform because a version that is in review has no editable
@@ -302,6 +340,8 @@ end
 private_lane :deliver_to_app_store do |options|
   binary = { ipa: options[:ipa], pkg: options[:pkg] }.compact
   submitting = options[:submit] || !binary.empty?
+
+  clear_rejected_review_submission(ASC_PLATFORM.fetch(options[:platform])) if submitting
 
   upload_to_app_store({
     api_key: asc_key,
